@@ -1,10 +1,16 @@
 #include <stdlib.h>
 #include <math.h>
 
-#define LEARN_TARE 0.5
 #define RAND_WEIGHT (( ((float)rand() / (float)RAND_MAX) - 0.5)* pow(pLay->out,-0.5))
 
-//----------------------------------- NN Lay
+#define LEARN_RATE                           0.5         //neuro network lern rate
+#define TRAIN_LOOP                           500         //train calls count
+#define INPUT_NEURONS                        100         //size of first neuero network layer's
+#define OUTPUT_NEURONS                       2           //size of last neuero network layer's
+#define LAYER_COUNT                          3           //layer count in neuero network
+int HIDDEN_LAYER_NEUERONS[LAYER_COUNT-1] =   {10,4};    //stores size of each hidden layer and help create them
+
+//--------------------------------------------------Neuero network Lay struct
     struct nnLay{
             //--- information about input/out width for neuro layer
            int in;
@@ -16,7 +22,7 @@
            //--- current errors for backPropagate
            float* errors;
     };
-
+//--------------------------------------------------Neuero network struct
     struct nNetwork{
         //--- input output neuerons for NN
             int inputNeurons;
@@ -28,7 +34,7 @@
             float *inputs;
             float *targets;
     };
-        //--- neuero lay functions
+//------------------------------------------------- neuero layer's functions
         float sigmoida(float val);
         float sigmoidasDerivate(float val);
         void updMatrix(struct nnLay *pLay,float *enteredVal);
@@ -36,47 +42,19 @@
         void makeHidden(struct nnLay * pLay, float *inputs);
         void calcOutError(struct nnLay * pLay,float *targets);
         void calcHidError (struct nnLay * current_lay,struct nnLay * next_lay);
-
-         //--- neuero network functions
+//------------------------------------------------- neuero network functions
         void backPropagate(struct nNetwork *pNN);
         void feedForwarding(int ok, struct nNetwork *pNN);
         void train(struct nNetwork * pNN, float *in, float *targ);
         void query(struct nNetwork *pNN,  float *in);
-        void printArray(float *arr,int s);
-
+        void createNN(struct nNetwork *pNN);
+//---------------------------------------------------------------------------
 int main()
 {
-    printf("%s","____________hellow MPL__________ \n");
+    printf("%s","____________Hellow MPL__________ \n");
     struct nNetwork myMLP;
-     //--- "Neyeral Network" this equal "NN"
-    //---set width for NN input
-    myMLP.inputNeurons = 100;
-    //---set width for NN output
-    myMLP.outputNeurons =2;
-    //---set layer count for NN,
-    //---where input neuerons for first layer equal NN input
-    //---and output neuerons for last layer equal NN output
-    myMLP.nlCount = 3;
-
-    myMLP.nList = (struct nnLay*) malloc(( myMLP.nlCount)*sizeof(struct nnLay));
-
-    //--- set input and output array size for every layer
-    //--- where first layer have "NN input" input size
-    //--- and last layer have "NN output" output size
-    myMLP.nList[0].in =  myMLP.inputNeurons;
-    myMLP.nList[0].out = 10;
-    makeIO(&myMLP.nList[0]);
-
-    myMLP.nList[1].in =  10;
-    myMLP.nList[1].out = 4;
-    makeIO(&myMLP.nList[1]);
-
-    myMLP.nList[2].in = 4;
-    myMLP.nList[2].out = myMLP.outputNeurons;
-    makeIO(&myMLP.nList[2]);
-
-    //--- create data set
-    //--- (abstract data set)
+    createNN(&myMLP);
+    //--- create data set (abstract data set)
         float * input_1 = (float*) malloc((100)*sizeof(float));
         for(int i = 0; i <100; i++)
         {
@@ -87,8 +65,7 @@ int main()
         {
             input_2[i] = ((float)rand() ) / (float)RAND_MAX - 0.499f;
         }
-
-    //--- create targets
+    //--- create targets (abstract targets)
         float * target_1 = (float*) malloc((2)*sizeof(float));
         target_1[0] = 0.99f;
         target_1[1] = 0.01f;
@@ -96,20 +73,18 @@ int main()
         float * target_2 = (float*) malloc((2)*sizeof(float));
         target_2[0] = 0.01f;
         target_2[1] = 0.99f;
-
     //--- train
-           int train_calls=0;
-           while(train_calls<100)
-            {
+           int train_calls = 0;
+           while(train_calls < TRAIN_LOOP)
+            { 
                 train(&myMLP,input_1,target_1);
                 train(&myMLP,input_2,target_2);
                 train_calls++;
-            }
+            }  
     //--- query
             query(&myMLP,input_1);
             query(&myMLP,input_2);
-       printf("%s","_______________THE____END_______________");
-
+                
     system("pause");
     return 0;
 }
@@ -133,9 +108,9 @@ int main()
 
                    for(int hid =0; hid < pLay->in; hid++)
                    {
-                       pLay->matrix[hid][ou] += (LEARN_TARE * pLay->errors[ou] * enteredVal[hid]);
+                       pLay->matrix[hid][ou] += (LEARN_RATE * pLay->errors[ou] * enteredVal[hid]);
                    }
-                   pLay->matrix[pLay->in][ou] += (LEARN_TARE * pLay->errors[ou]);
+                   pLay->matrix[pLay->in][ou] += (LEARN_RATE * pLay->errors[ou]);
                }
            }
            void makeIO(struct nnLay *pLay)
@@ -162,7 +137,7 @@ int main()
            {
                //--- make value after signal passing current layer
                for(int hid =0; hid < pLay->out; hid++)
-               {
+               {     
                    float tmpS = 0.0;
                    for(int inp =0; inp < pLay->in; inp++)
                    {
@@ -213,23 +188,24 @@ void feedForwarding(int ok,  struct nNetwork *pNN)
 {
     //--- signal through NN in forward direction
     //--- for first layer argument is _inputs
-    makeHidden(&pNN->nList[0],pNN->inputs);
+    makeHidden(&pNN->nList[0],pNN->inputs); 
    //--- for other layer argument is "hidden" array previous's layer
     for (int i = 1; i<pNN->nlCount; i++)
-         makeHidden(&pNN->nList[i],pNN->nList[i-1].hidden);
-
+    {
+         makeHidden(&pNN->nList[i], pNN->nList[i-1].hidden);
+    }
     //--- bool condition for query NN or train NN
     if (!ok)
     {
         printf("%s","\nFeed Forward: \n");
         for(int out =0; out < pNN->outputNeurons; out++)
         {
-            printf("%.6f \n",pNN->nList[pNN->nlCount-1].hidden[out]);
+            printf("%.6f \n", pNN->nList[pNN->nlCount-1].hidden[out]);
         }
         return;
     }
     else
-    {
+    {    
         backPropagate(pNN);
     }
 }
@@ -241,7 +217,7 @@ void train(struct nNetwork * pNN, float *in, float *targ)
     pNN->inputs = in;
     pNN->targets = targ;
       //--- bool (like 1/0)== true enable backPropogate function, else it's equal query without print
-    feedForwarding( 1,pNN);
+    feedForwarding( 1, pNN);
     }  
 }
 
@@ -250,4 +226,36 @@ void query(struct nNetwork *pNN,  float *in)
     pNN->inputs = in;
     //--- bool (like 1/0) == false call query NN with print NN output
     feedForwarding(0,pNN);
+}
+
+void  createNN(struct nNetwork *pNN)
+{
+      //--- "Neyeral Network" this equal "NN"
+    //---set width for NN input
+    pNN->inputNeurons = INPUT_NEURONS;
+    //---set width for NN output
+    pNN->outputNeurons = OUTPUT_NEURONS;
+    //---set layer count for NN,
+    //---where input neuerons for first layer equal NN input
+    //---and output neuerons for last layer equal NN output
+    pNN->nlCount = LAYER_COUNT;
+    pNN->nList = (struct nnLay*) malloc(( pNN->nlCount)*sizeof(struct nnLay));
+    //--- set input and output array size for every layer
+    //--- where first layer have "NN input" input size
+    //--- and last layer have "NN output" output size
+    
+    pNN->nList[0].in  = pNN->inputNeurons;
+    pNN->nList[0].out = HIDDEN_LAYER_NEUERONS[0];
+    makeIO(&pNN->nList[0]);               
+
+    for (int i = 1; i <pNN->nlCount -1; i++)
+    {
+    pNN->nList[i].in = HIDDEN_LAYER_NEUERONS[i];
+    pNN->nList[i].out = HIDDEN_LAYER_NEUERONS[i+1];
+    makeIO(&pNN->nList[i]);
+    }
+
+    pNN->nList[pNN->nlCount-1].in =  HIDDEN_LAYER_NEUERONS[pNN->nlCount-1];
+    pNN->nList[pNN->nlCount-1].out = OUTPUT_NEURONS;
+    makeIO(&pNN->nList[pNN->nlCount-1]);
 }
